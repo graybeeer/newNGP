@@ -13,7 +13,7 @@ public:
 
 	class Player* m_player{ };
 	list<class Player*> m_otherPlayerList{ }; //다른 멀티 플레이어 리스트
-
+	list<class Monster*> m_monsterList{ };
 private:
 	int m_stageNum{ };
 	CImage* m_backBuffer{ };
@@ -21,7 +21,7 @@ private:
 	wstring m_backGroundFileName{ };
 	string m_backGroundKey{ };
 
-	list<class Monster*> m_monsterList{ };
+	
 	list<class Barigate*> m_barigateList{ };
 	list<class Bullet*> m_bulletList{ };
 	vector<class Button*> m_buttonVec{ };

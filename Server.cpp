@@ -100,6 +100,12 @@ DWORD WINAPI roomDataResendThread(LPVOID arg)
 	char tmpstr[2];
 	int retval = 0;
 
+	//플레이어 정보를 담을 문자열
+	char tmpstr_p[11];
+	char coordbuf_p[11];
+	char tmpbuf_p[5];
+
+	char coordbuf_m[20];
 
 	bool beforeReadyStatus[3]; // 이전 레디상태와 비교하여 dlg에 변화가 있으면 재전송하는 변수
 	for (int i{}; i < 3; ++i) {
@@ -179,13 +185,54 @@ DWORD WINAPI roomDataResendThread(LPVOID arg)
 			}
 		}
 		else {
+			if (gameFrame.m_curStage->m_player) {
+				
+				tmpstr_p[0] = '\0';
 
+				send(cl_sock, "CO", 3, 0);
+				POINT pt = gameFrame.m_curStage->m_player->GetPlayerPt();
+				strcpy(coordbuf_p, "0000");
+				
+				_itoa(pt.x, tmpbuf_p, 10);
+				int lentmp = strlen(tmpbuf_p);
+				for (int i{}; i < lentmp; ++i) {
+					coordbuf_p[(4 - lentmp) + i] = tmpbuf_p[i];
+				}
+				send(cl_sock, coordbuf_p, 5, 0);
+
+				strcpy(coordbuf_p, "0000");
+				_itoa(pt.y, tmpbuf_p, 10);
+				lentmp = strlen(tmpbuf_p);
+				for (int i{}; i < lentmp; ++i) {
+					coordbuf_p[(4 - lentmp) + i] = tmpbuf_p[i];
+				}
+				send(cl_sock, coordbuf_p, 5, 0);
+
+				//몬스터 리스트 전부 위치 보내기
+				send(cl_sock, "MO", 3, 0);
+				auto firstMonster = gameFrame.m_curStage->m_monsterList.begin();
+				for (firstMonster; firstMonster != gameFrame.m_curStage->m_monsterList.end(); firstMonster++)
+				{
+					Monster* monster = *firstMonster;
+					POINT pt_m = monster->GetMonsterPt();
+					
+					sprintf(coordbuf_m, "%5d%5d", pt_m.x, pt_m.y);
+					send(cl_sock, coordbuf_m, 10, 0);
+				}
+			}
 		}
 
 		if (retval == SOCKET_ERROR) {
 			break;
 		}
-		Sleep(333);
+		if (!wr_server.GetIsIngame()) 
+		{
+			Sleep(333); //대기방일땐 333쉬고
+		}
+		else
+		{
+			Sleep(6); //인게임이면 6쉰다
+		}
 	}
 
 	return 0;
@@ -199,7 +246,7 @@ DWORD WINAPI inGameServerThread(LPVOID arg)
 	char recvco[30];
 	memset(recvco, 1, 30);
 	int retval;
-	//gameFrame.m_curStage->m_player->GetPlayerPt();
+
 	auto opIter = gameFrame.m_curStage->m_otherPlayerList.begin();
 	send(cl_sock, "ST", 3, 0);
 
@@ -223,6 +270,7 @@ DWORD WINAPI inGameClientThread(LPVOID arg)
 
 	int retval;
 
+
 	while (1) {
 		retval = recv(sv_sock, recvcode, 3, MSG_WAITALL);
 
@@ -235,6 +283,7 @@ DWORD WINAPI inGameClientThread(LPVOID arg)
 	}
 	return 0;
 }
+
 
 DWORD WINAPI inGameClientResendThread(LPVOID arg)
 {
@@ -359,8 +408,10 @@ int WAITING_ROOM::FindBlankPlayer()
 	for (int i{}; i < 3; ++i) {
 		GetDlgItemTextA(DlgHandle, IDC_P1NAME + i, tmpname, 20);
 		if (strcmp(tmpname, "") == 0)
+			playerCount = i + 1;
 			return i;
 	}
+	playerCount = 4;
 	return -1;
 }
 
@@ -445,17 +496,41 @@ int WAITING_ROOM::stringAnalysis(char* recvdata)
 			pressStart();
 		}
 		else if (strcmp(recvdata, "CO") == 0) {
+			/*
 			recv(my_sock, recvcode, 2, MSG_WAITALL);
 			int editnum = atoi(recvcode);
+			*/
+			POINT pt;
+			recv(my_sock, recvcode, 5, MSG_WAITALL);
+			pt.x = atoi(recvcode);
 
 			recv(my_sock, recvcode, 5, MSG_WAITALL);
-			int xcoord = atoi(recvcode);
+			pt.y = atoi(recvcode);
 
-			recv(my_sock, recvcode, 5, MSG_WAITALL);
-			int ycoord = atoi(recvcode);
+			auto opIter = gameFrame.m_curStage->m_otherPlayerList.begin();
+			if ((*opIter)) {
+				(*opIter)->SetPt(pt);
+			}
+		}
+		else if (strcmp(recvdata, "MO") == 0) {
+			auto monster = gameFrame.m_curStage->m_monsterList.begin();
+			for (monster; monster != gameFrame.m_curStage->m_monsterList.end(); monster++)
+			{
+				Monster* mon = *monster;
+				POINT pt;
+				recv(my_sock, recvcode, 5, MSG_WAITALL);
+				pt.x = atoi(recvcode);
+
+				recv(my_sock, recvcode, 5, MSG_WAITALL);
+				pt.y = atoi(recvcode);
+				mon->SetPt(pt);
+			}
+			
+
 		}
 		else if (strcmp(recvdata, "CR") == 0) {
-
+			//클라이언트가 인게임이 시작하면 inGameClientResendThread를 시작
+			FindBlankPlayer(); //게임이 시작하기전 인원체크
 			EndDialog(DlgHandle, 0);
 			HANDLE hnd = CreateThread(NULL, 0, inGameClientResendThread, (LPVOID)this, 0, NULL);
 			CloseHandle(hnd);
@@ -557,6 +632,11 @@ void WAITING_ROOM::SetDlgHandle(HWND in)
 bool WAITING_ROOM::GetIsHost()
 {
 	return is_host;
+}
+
+int WAITING_ROOM::GetPlayerCount()
+{
+	return playerCount;
 }
 
 bool WAITING_ROOM::GetIsIngame()

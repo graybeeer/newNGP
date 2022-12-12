@@ -9,7 +9,6 @@
 
 #pragma comment(lib, "ws2_32") // ws2_32.lib 링크
 
-#define SERVERPORT 4444
 #define NICKBUFSIZE 21
 
 DWORD WINAPI roomServerThread(LPVOID arg);
@@ -20,6 +19,8 @@ DWORD WINAPI roomDataResendThread(LPVOID arg);
 DWORD WINAPI inGameServerThread(LPVOID arg);
 DWORD WINAPI inGameClientThread(LPVOID arg);
 DWORD WINAPI inGameClientResendThread(LPVOID arg);
+
+
 
 class WAITING_ROOM
 {
@@ -50,6 +51,7 @@ public:
 	HWND		GetDlgHandle();
 	void		SetDlgHandle(HWND in);
 	bool		GetIsHost();
+	int			GetPlayerCount();
 
 	bool		GetIsIngame();
 	void		SetIsIngame(bool in);
@@ -64,6 +66,7 @@ private:
 	bool				is_ready{ false };
 	bool				is_host{ false };
 	int					my_num{ -1 };
+	int					playerCount{ 2 }; //총 플레이어 숫자(본인포함)
 	HWND				DlgHandle;
 };
 
@@ -90,3 +93,4 @@ private:
 	int					my_num{ -1 };
 	bool				is_host{ false };
 };
+

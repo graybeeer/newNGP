@@ -59,6 +59,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     //다이얼로그(대기방)
     DialogBox(hInst, MAKEINTRESOURCE(IDD_DIALOG_SERVER), msg.hwnd, DialogProc_Server);
+    
     // 기본 메시지 루프입니다:
     while (true) {
         if (msg.message == WM_QUIT) {
@@ -147,6 +148,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
+
+   
 
    gameFrame.Init(hInst, hWnd);
 
